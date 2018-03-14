@@ -1,0 +1,19 @@
+{
+    "name": "web-crawl",
+    "version": "0.0.1",
+    "description": "Crawl website",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Mithrilhall",
+    "license": "MIT",
+    "dependencies": {
+        "chalk": "^2.3.2",
+        "cheerio": "^1.0.0-rc.2",
+        "fs-extra": "^5.0.0",
+        "nightmare": "^3.0.0",
+        "node-notifier": "^5.2.1"
+    }
+}
