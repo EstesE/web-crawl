@@ -3,86 +3,63 @@ const nightmare = Nightmare({ show: true })
 const cheerio = require('cheerio');
 const chalk = require('chalk');
 const fs = require('fs-extra');
+const { URL } = require('url');
+const psl = require('psl');
 
 let urls = [];
 let visitedUrls = [];
 
-let targetUrl = 'https://..........';
-
-function isArray(item) {
-    return item.constructor === Array;
-}
-
-function extractHostname(url) {
-    let hostname;
-    //find & remove protocol (http, ftp, etc.) and get hostname
-
-    if (url.indexOf("://") > -1) {
-        hostname = url.split('/')[2];
-    }
-    else {
-        hostname = url.split('/')[0];
-    }
-
-    //find & remove port number
-    hostname = hostname.split(':')[0];
-    //find & remove "?"
-    hostname = hostname.split('?')[0];
-
-    return hostname;
-}
-
-function extractRootDomain(url) {
-    let domain = extractHostname(url);
-    let splitArr = domain.split('.');
-    let arrLen = splitArr.length;
-
-    //extracting the root domain here
-    //if there is a subdomain 
-    if (arrLen > 2) {
-        domain = splitArr[arrLen - 2] + '.' + splitArr[arrLen - 1];
-        //check to see if it's using a Country Code Top Level Domain (ccTLD) (i.e. ".me.uk")
-        if (splitArr[arrLen - 2].length == 2 && splitArr[arrLen - 1].length == 2) {
-            //this is using a ccTLD
-            domain = splitArr[arrLen - 3] + '.' + domain;
-        }
-    }
-    return domain;
+let targetUrl = 'https://www......com:443';
+let rootUrl = new URL(targetUrl);
+rootUrl.psl = psl.parse(rootUrl.hostname);
+if (rootUrl.psl.error) {
+    console.log(rootUrl.psl.error.message);
+} else {
+    removeFile(rootUrl);
 }
 
 function isUsable(href) {
-    let rootUrl = extractRootDomain(targetUrl);
-    if (href.indexOf('tel:') > -1) {
-        return false;
-    }
-    if (href.indexOf('mailto://') > -1) {
-        return false;
-    }
-    if (href.indexOf('#') > -1) {
-        return false;
-    }
-    if (href.indexOf('@') > -1) {
-        return false;
-    }
-    if (href.indexOf('void(0)') > -1 || href.indexOf('()') > -1 || href.indexOf('javascript:') > -1) {
-        return false;
-    }
-    if ((href.indexOf('https://') > -1 || href.indexOf('http://')) > -1) {
-        if (href.indexOf(`www.${rootUrl}`) > -1) {
-            return true;
-        }
-        return false;
-    }
-    if (href.indexOf('//') > -1) {
-        return false;
-    }
-    if (href.indexOf('.jpg') > -1) {
-        return false;
-    }
-    if (href.indexOf(rootUrl) > -1) {
+    if (typeof href === 'object') {
         return true;
+    } else if (typeof href === 'string') {
+        if (href.indexOf('tel:') > -1) { return false };
+        if (href.indexOf('mailto://') > -1) { return false };
+        if (href.indexOf('@') > -1) { return false; }
+        if (href.indexOf('#') > -1) { return false; }
+        if (href.indexOf('void(0)') > -1 || href.indexOf('()') > -1 || href.indexOf('javascript:') > -1) { return false; }
+        if ((href.indexOf('https://') > -1 || href.indexOf('http://')) > -1) {
+            if (href.indexOf(`www.${rootUrl.psl.domain}`) > -1 || href.indexOf(rootUrl.psl.domain) > -1) {
+                if (href.indexOf(`.${rootUrl.psl.domain}`) > -1 && href.indexOf(`www.${rootUrl.psl.domain}`) === -1) {
+                    return false;
+                }
+                return true;
+            }
+            return false;
+        }
+        if (href.indexOf('//') > -1) {
+            return false;
+        }
+        if (href.indexOf('.jpg') > -1) {
+            return false;
+        }
+        // if (href.indexOf(rootUrl) > -1) {
+        //     return true;
+        // }
+        return true;
+    } else {
+        debugger;
+        return false;
     }
     return true;
+}
+
+function updateFile(link) {
+    fs.ensureFile('./links.txt', err => {
+        if (err) return console.log(err);
+        fs.appendFile('./links.txt', link + '\n', err => {
+            if (err) return console.log(err);
+        });
+    });
 }
 
 function addLinks(links) {
@@ -96,12 +73,13 @@ function addLinks(links) {
                     let x = '';
                     if (typeof l !== 'undefined') {
                         if (l.indexOf('https://') === -1 && l.indexOf('http://') === -1) {
-                            if (l.indexOf('/') === -1 && targetUrl.indexOf('/') !== -1) {
-                                x = `${targetUrl}/${l}`;    
+                            if (l !== '/') {
+                                x = rootUrl.href + l.replace('/', '');
                             } else {
-                                x = `${targetUrl}${l}`;
-                            }                            
+                                x = rootUrl.href;
+                            }
                         } else {
+                            // Just pass it along.
                             x = l;
                         }
                         if (urls.indexOf(x) === -1 && visitedUrls.indexOf(x) === -1) {
@@ -122,29 +100,33 @@ function addLinks(links) {
     });
 }
 
-function updateFile(link) {
-    fs.ensureFile('./links.txt', err => {
-        if (err) return console.log(err);
-        fs.appendFile('./links.txt', link + '\n', err => {
-            if (err) return console.log(err);
-        });
-    });
-}
-
-function run(targetUrl) {
+function run(u) {
     const notifier = require('node-notifier');
-    if (isUsable(targetUrl)) {
-        if (visitedUrls.indexOf(targetUrl) === -1) {
-            visitedUrls.push(targetUrl);
-            updateFile(targetUrl);
-            console.log(chalk.cyan(`+ `) + targetUrl + chalk.gray(` to `) + chalk.cyan(`visitedUrls `) + `(` + chalk.green(visitedUrls.length) + `)`);
-            urls.pop();
-            console.log(chalk.yellow(`- `) + targetUrl  + chalk.gray(` from `) + chalk.yellow(`urls `) + `(` + chalk.green(urls.length) + `)`);
-        } else {
-            console.log('Nothing to do');
+    let urlPath = '';
+    if (isUsable(u)) {
+        if (typeof u === 'string') {
+            if (visitedUrls.indexOf(u) === -1) {
+                visitedUrls.push(u);
+                updateFile(u);
+                console.log(chalk.cyan(`+ `) + u + chalk.gray(` to `) + chalk.cyan(`visitedUrls `) + `(` + chalk.green(visitedUrls.length) + `)`);
+                urls.pop();
+                console.log(chalk.yellow(`- `) + u + chalk.gray(` from `) + chalk.yellow(`urls `) + `(` + chalk.green(urls.length) + `)`);
+                urlPath = u;
+            }
+        } else if (typeof u === 'object') {
+            debugger;
+            if (visitedUrls.indexOf(u.hostname) === -1) {
+                visitedUrls.push(u.hostname);
+                updateFile(u.origin);
+                console.log(chalk.cyan(`+ `) + u.hostname + chalk.gray(` to `) + chalk.cyan(`visitedUrls `) + `(` + chalk.green(visitedUrls.length) + `)`);
+                urls.pop();
+                console.log(chalk.yellow(`- `) + u.hostname + chalk.gray(` from `) + chalk.yellow(`urls `) + `(` + chalk.green(urls.length) + `)`);
+                urlPath = u;
+            }
         }
+        
         nightmare
-            .goto(targetUrl)
+            .goto(urlPath)
             .wait(100)
             .evaluate(function () {
                 return document.body.innerHTML;
@@ -180,6 +162,9 @@ function run(targetUrl) {
                     }
                 }
             })
+            .catch(error => {
+                console.log(error.details + ' - ' + error.message)
+            });
     } else {
         notifier.notify({
             title: 'Web-Crawl',
@@ -189,12 +174,9 @@ function run(targetUrl) {
     }
 }
 
-function removeFile(targetUrl) {
+function removeFile(rootUrl) {
     fs.remove('./links.txt', err => {
         if (err) return console.log(err);
-        run(targetUrl);
+        run(rootUrl);
     });
 }
-
-
-removeFile(targetUrl);
