@@ -5,14 +5,6 @@ const chalk = require('chalk');
 const fs = require('fs-extra');
 const { URL } = require('url');
 const psl = require('psl');
-const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/lyrics');
-
-const Song = mongoose.model('Song', {
-    artist: String,
-    title: String,
-    lyrics: String
-});
 
 let urls = [];
 let visitedUrls = [];
@@ -68,9 +60,6 @@ function isUsable(href) {
         if (href.indexOf('User:') > -1) {
             return false;
         }
-        if (href.indexOf('User_blog:') > -1) {
-            return false;
-        }
         if (href.indexOf('action=') > -1) {
             return false;
         }
@@ -84,160 +73,6 @@ function isUsable(href) {
             return false;
         }
         if (href.indexOf('/wiki/') === -1) {
-            return false;
-        }
-        if (href.indexOf('//bighero6') > -1) {
-            return false;
-        }
-        if (href.indexOf('//cloverfield') > -1) {
-            return false;
-        }
-        if (href.indexOf('//tardis') > -1) {
-            return false;
-        }
-        if (href.indexOf('//projectsalt.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//wowsb.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//studio-ghibli.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//gineipaedia.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//anime.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//en.wikipedia') > -1) {
-            return false;
-        }
-        if (href.indexOf('//.ghibli.') > -1) {
-            return false;
-        }
-        if (href.indexOf('.studioghibli.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//megaman.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//pact-web-serial.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//worm.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//onepunchman.') > -1) {
-            return false;
-        }
-        if (href.indexOf('//kingdomhearts.') > -1) {
-            return false;
-        }
-        if (href.indexOf('User_talk:') > -1) {
-            return false;
-        }
-        if (href.indexOf('Category_talk:') > -1) {
-            return false;
-        }
-        if (href.indexOf('Template_talk:') > -1) {
-            return false;
-        }
-        if (href.indexOf('Template:Deletion') > -1) {
-            return false;
-        }
-        if (href.indexOf('Template:Stub') > -1) {
-            return false;
-        }
-        if (href.indexOf('Template:Split') > -1) {
-            return false;
-        }
-        if (href.indexOf('Template:Instrumental') > -1) {
-            return false;
-        }
-        if (href.indexOf('Template:Partial') > -1) {
-            return false;
-        }
-        if (href.indexOf('Category:Label') > -1) {
-            return false;
-        }
-        if (href.indexOf('Category:Templates') > -1) {
-            return false;
-        }
-        if (href.indexOf('Category:Split') > -1) {
-            return false;
-        }
-        if (href.indexOf('Help:Contents') > -1) {
-            return false;
-        }
-        if (href.indexOf('miitopia-fanon.') > -1) {
-            return false;
-        }
-        if (href.indexOf('Miitopia_Fanon_Wiki:') > -1) {
-            return false;
-        }
-        if (href.indexOf('Category:') > -1) {
-            return false;
-        }
-        if (href.indexOf('File:') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_De') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_El') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Es') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Fi') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Fr') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_It') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Ja') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Ko') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Nl') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_No') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Pl') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Pt') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Ru') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Sv') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Tl') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Tr') > -1) {
-            return false;
-        }
-        if (href.indexOf('Main_Page_Zh') > -1) {
-            return false;
-        }
-        // Breakers?
-        if (href.indexOf('?direction=') > -1) {
-            return false;
-        }
-        if (href.indexOf('?oldid=') > -1) {
             return false;
         }
         
@@ -422,29 +257,6 @@ function run(u) {
                         console.log(`Artist: ${title_parts[0]}`);
                         console.log(`Song: ${title_parts[1].replace(' Lyrics', '')}`);
                         console.log(`Lyrics: ${lyrics.eq(0).clone().html()}`);
-                        // debugger;
-                        let mySong = new Song({
-                            artist: title_parts[0],
-                            title: title_parts[1].replace('Lyrics', '').trim(),
-                            lyrics: lyrics.eq(0).clone().html().replace('<div class="lyricsbreak"></div>', '')
-                        });
-                        
-                        Song.find({ 'artist': mySong.artist, 'title': mySong.title }, function(err, docs) {
-                            // debugger;
-                            if (err) {
-                                debugger;
-                            }
-                            // if (mySong.lyrics.indexOf('<span ') === -1) {
-                            if (mySong.lyrics.indexOf('Unfortunately, we are not licensed') === -1) {
-                                if (docs.length === 0) {
-                                    mySong.save().then(() => {
-                                        console.log('saved');
-                                    });
-                                } else {
-                                    // debugger;
-                                }
-                            }
-                        });
                     }
                 }
             })
